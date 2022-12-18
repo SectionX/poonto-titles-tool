@@ -10,16 +10,37 @@ from fuzzywuzzy import fuzz
 class ProductTitle:
 
     topics: dict[str: re.Pattern] = {
-    "color": ['-?ΛΕΥΚ\w[Σ]?-?', '-?ΑΣΠΡ\w[Σ]?-?', '-?ΓΚΡΙ-?', 
-            '-?ΕΚΡΟΥ-?', '-?ΜΠΕΖ-?', '-?ΜΑΥΡ\w[Σ]?-?', 
-            "-?ΑΝΘΡΑΚΙ-?", '-?ΚΟΚΚΙΝ\w\w?-?', "-?ΜΠΟΡΝΤΩ-?", 
-            "-?ΡΟΖ-?", "-?ΜΩΒ-?", '-?ΚΙΤΡΙΝ\w[Σ]?-?', 
-            '-?ΠΡΑΣΙΝ\w[Σ]?-?', "-?ΦΥΣΤΙΚΙ-?", "-?ΒΕΡΑΜΑΝ-?", 
-            '-?ΜΠΛΕ-?', '-?ΣΙΕΛ-?', 'ΓΑΛΑΖΙ\w[Σ]?', 
-            '-?ΑΣΗΜΙ-?', '-?ΧΡΥΣ\w[Σ]?-?', '-?ΜΟΥΣΤΑΡΔΙ-?',
-            "-?ΠΕΤΡΟΛ-?","-?ΣΚΟΥΡΟ-?\s?", "-?ΚΑΦΕ-?", "-?[^K]?ΛΑΔΙ-?",
-            "-?ΣΑΜΠΑΝΙ-?", "-?NATURAL-?", "-?ΔΙΑΦΑΝ\w[Σ]?-?", 
-            "[\\\s-]?ΚΡΕΜ[\\\s-]?", "-?Τ\wΡΚΟΥΑΖ-?", "ΜΠΡΟΝΖΕ"],
+    "color": ['[^Μ][^Ε]\s?-?(ΛΕΥΚ\w[Σ]?)-?', 
+              '[^Μ][^Ε]\s?-?(ΑΣΠΡ\w[Σ]?)-?', 
+              '[^Μ][^Ε]\s?-?(ΓΚΡΙ)-?', 
+              '[^Μ][^Ε]\s?-?(ΕΚΡΟΥ)-?', 
+              '[^Μ][^Ε]\s?-?(ΜΠΕΖ)-?', 
+              '[^Μ][^Ε]\s?-?(ΜΑΥΡ\w[Σ]?)-?', 
+              "[^Μ][^Ε]\s?-?(ΑΝΘΡΑΚΙ)-?", 
+              '[^Μ][^Ε]\s?-?(ΚΟΚΚΙΝ\w[Σ]?)-?', 
+              "[^Μ][^Ε]\s?-?(ΜΠΟΡΝΤΩ)-?", 
+              "[^Μ][^Ε]\s?-?(ΡΟΖ)-?", 
+              "[^Μ][^Ε]\s?-?(ΜΩΒ)-?", 
+              '[^Μ][^Ε]\s?-?(ΚΙΤΡΙΝ\w[Σ]?)-?', 
+              '[^Μ][^Ε]\s?-?(ΠΡΑΣΙΝ\w[Σ]?)-?', 
+              "[^Μ][^Ε]\s?-?(ΦΥΣΤΙΚΙ)-?", 
+              "[^Μ][^Ε]\s?-?(ΒΕΡΑΜΑΝ)-?", 
+              '[^Μ][^Ε]\s?-?(ΜΠΛΕ)-?', 
+              '[^Μ][^Ε]\s?-?(ΣΙΕΛ)-?', 
+              '[^Μ][^Ε]\s?-?(ΓΑΛΑΖΙ\w[Σ]?)-?', 
+              '[^Μ][^Ε]\s?-?(ΑΣΗΜΙ)-?', 
+              '[^Μ][^Ε]\s?-?(ΧΡΥΣ\w[Σ]?)-?', 
+              '[^Μ][^Ε]\s?-?(ΜΟΥΣΤΑΡΔΙ)-?',
+              "[^Μ][^Ε]\s?-?(ΠΕΤΡΟΛ)-?",
+              "[^Μ][^Ε]\s?-?(ΣΚΟΥΡΟ)-?\s?", 
+              "[^Μ][^Ε]\s?-?(ΚΑΦΕ)-?", 
+              "[^Μ][^Ε]\s?-?([^K]?ΛΑΔΙ)-?",
+              "[^Μ][^Ε]\s?-?(ΣΑΜΠΑΝΙ)-?", 
+              "[^Μ][^Ε]\s?-?(NATURAL)-?", 
+              "[^Μ][^Ε]\s?-?(ΔΙΑΦΑΝ\w[Σ]?)-?", 
+              "[^Μ][^Ε]\s?-?(ΚΡΕΜ)\W", 
+              "[^Μ][^Ε]\s?-?(Τ\wΡΚΟΥΑΖ)-?", 
+              "[^Μ][^Ε]\s?-?(ΜΠΡΟΝΖΕ)-?"],
     "brand": ["INART", "ESPIEL", "KENTIA", "ZAROS", "AI DECORATION", "CLICK", "GUY LAROCHE", "SAINT CLAIR", "SAINTCLAIR", "SB HOME", "SBABY", "BLE"],
     "grouping": ["ΣΕΤ \d\d?\s?\S*", "ΣΕΤ \d\d?\s?\S*",  "ΣΕΤ ΤΩΝ \d\d?", "ΣΕΤ\d\d?", "SET", "^ΣΕΤ\s", "ΣΕΤ\s", "\d\d?\sΤΕΜ\S*", '\s(TEM)\s', "\s(ΤΕΜ)\s", "\sS\s\d\d?", "^S\s\d\d?"],
     "dimension": ["[ΦΔDF]\d\S+\s?\d?\d?\d?\s?[CM,ML,L,ΕΚ]*", "\S*\d[XΧ]\d\S*\s?\d?\d?\d?\s?[CM,ML,L,ΕΚ]*", "\S*\d\s?\d?\d?\d?\s?[CMLΕΚΧΙΛ]+\s"],
@@ -38,6 +59,8 @@ class ProductTitle:
         self.material = self.classifier("material")
         self.dimension = self.classifier("dimension")
         self.product = self.extract_product().title()
+        self.entropy_title = self.calculate_entropy(self.normalized_title)
+        self.entropy_product = self.calculate_entropy(self.product)
 
 
 
@@ -54,8 +77,6 @@ class ProductTitle:
         # self.dimension = self.extract("dimension")
         # self.color = self.extract("color")
         # self.material = self.extract("material")
-        # self.entropy_title = self.calculate_entropy(self.normalized_title)
-        # self.entropy_product = self.calculate_entropy(self.product)
 
 
     def simplify_title(self):
@@ -70,6 +91,8 @@ class ProductTitle:
         possible_SKU = title.split(" ")[-1]
         if re.search("\d", possible_SKU):
             title = title.replace(possible_SKU, "")
+        else:
+            possible_SKU = ""
         if self.debug:
             print(possible_SKU)
             print(brand_)
@@ -118,7 +141,9 @@ class ProductTitle:
             # .replace("+ ", "+")
             .replace("ΚΩΔ ", "ΚΩΔ:")
             .replace("ΣΕΤ ΤΩΝ", "ΣΕΤ")
+            .replace("ΧΡΩΜΑΤΑ", "")
             .replace("ΧΡΩΜΑ", "")
+            .replace(" ΣΕ ", " ")
             # .replace("AI DECORATION", "AI_DECORATION")
             # .replace("SB HOME", "SB_HOME")
             # .replace("GUY LAROCHE", "GUY_LAROCHE")
@@ -129,11 +154,11 @@ class ProductTitle:
 
 
     def get_info(self) -> list:
-        return [*map(lambda x: " ".join(x) if repr(type(x)) == "<class 'list'>" else x, [self.original_title, self.normalized_title, self.verbose_title, self.product, self.brand, self.code, self.unit, self.grouping, self.dimension, self.color, self.material, self.entropy_product, self.entropy_title])]
+        return [*map(lambda x: " ".join(x).title() if repr(type(x)) == "<class 'list'>" else str(x).title(), [self.original_title, self.normalized_title, self.product, self.brand, self.code, self.grouping, self.dimension, self.color, self.material])]+[self.entropy_product, self.entropy_title]
 
     
     def get_column_names(self) -> list[str]:
-        return ["og_title", "normalized_title", "verbose_title", "product", "brand", "code", "unit", "grouping", "dimension", "color", "material", "entropy", "entropy_title"]
+        return ["og_title", "normalized_title", "product", "brand", "code", "grouping", "dimension", "color", "material", "entropy", "entropy_title"]
 
 
     def to_excel(self, data, column_names, start = False):
@@ -165,8 +190,8 @@ class ProductTitle:
                 for pattern in patterns:
                     if self.debug:
                         check = re.search(pattern, word)
-                        if check:
-                            print(check)
+                        # if check:
+                        #     print(check)
                     if re.search(pattern, word):
                         matched_words[word] = topic
                         is_matched = True
@@ -206,7 +231,8 @@ class ProductTitle:
             string += f" {word}"
         string = re.sub("\s{1,}", " ", string)
         words = string.split(" ")
-        print(words)
+        if self.debug:
+            print(words)
         for word in words:
             if word:
                 # word = word.replace("&&&", " ")
@@ -224,7 +250,7 @@ class ProductTitle:
         for word in words:
             score += 0.01
             if len(word) <= 3:
-                score += 1/len(word)
+                score += 1.01
         return score
         
 
