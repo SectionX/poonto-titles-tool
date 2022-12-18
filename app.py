@@ -5,6 +5,7 @@ import unicodedata as ud
 import re
 from random import randint
 from pprint import pprint as pp
+from fuzzywuzzy import fuzz
 
 class ProductTitle:
 
