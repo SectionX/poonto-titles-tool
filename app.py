@@ -6,6 +6,8 @@ import re
 from random import randint
 from pprint import pprint as pp
 from fuzzywuzzy import fuzz
+from collections import Counter
+import win32ui
 
 class ProductTitle:
 
@@ -41,7 +43,7 @@ class ProductTitle:
               "[^Μ][^Ε]\s?-?(ΚΡΕΜ)\W", 
               "[^Μ][^Ε]\s?-?(Τ\wΡΚΟΥΑΖ)-?", 
               "[^Μ][^Ε]\s?-?(ΜΠΡΟΝΖΕ)-?"],
-    "brand": ["INART", "ESPIEL", "KENTIA", "ZAROS", "AI DECORATION", "CLICK", "GUY LAROCHE", "SAINT CLAIR", "SAINTCLAIR", "SB HOME", "SBABY", "BLE"],
+    "brand": ["INART", "ESPIEL", "KENTIA", "ZAROS", "AI DECORATION", "CLICK", "GUY LAROCHE", "SAINT CLAIR", "SAINTCLAIR", "SB HOME", "SBABY", "BLE", "Versace 19•69"],
     "grouping": ["ΣΕΤ \d\d?\s?\S*", "ΣΕΤ \d\d?\s?\S*",  "ΣΕΤ ΤΩΝ \d\d?", "ΣΕΤ\d\d?", "SET", "^ΣΕΤ\s", "ΣΕΤ\s", "\d\d?\sΤΕΜ\S*", '\s(TEM)\s', "\s(ΤΕΜ)\s", "\sS\s\d\d?", "^S\s\d\d?"],
     "dimension": ["[ΦΔDF]\d\S+\s?\d?\d?\d?\s?[CM,ML,L,ΕΚ]*", "\S*\d[XΧ]\d\S*\s?\d?\d?\d?\s?[CM,ML,L,ΕΚ]*", "\S*\d\s?\d?\d?\d?\s?[CMLΕΚΧΙΛ]+\s"],
     # "unit": ["CM\w*\W?", "ΕΚ\w*\W?", "ΜΕΤΡ\w?\W?", "ML"],
@@ -282,6 +284,69 @@ def test():
         print(e[i].brand, e[i].code, e[i].grouping, e[i].color, e[i].material, e[i].dimension, sep="\n")
         print(e[i].product)
         print()
+
+
+def word_counter():
+    longstring = " ".join(titles).replace("\xa0", "0")
+    all_words = longstring.split()
+    return Counter(all_words)
+
+
+
+df = pd.DataFrame(word_counter().items()).sort_values(1, ascending=False)
+def get_new_dataset():
+    df.to_excel("dataset.xlsx", index=False)
+    os.startfile("dataset.xlsx")
+    inp = input("Close excel and press enter to continue")
+    dfnew = pd.read_excel('dataset.xlsx')
+    dfnew.to_csv("updated_dataset.csv")
+    return dfnew
+
+
+
+def find(checkstring: str = titles[1231], first: int = 1, brand = "", grouping = ""):
+
+    string = checkstring.split(" | ")[0]
+
+    head = ""
+    tail = ""
+
+    if first:
+        print()
+
+        #debrand
+        for brand in ProductTitle.topics['brand']:
+            if fuzz.partial_ratio(string, brand) == 100:
+                print(f"{brand = }\n")
+                string = string.replace(brand, "").strip()
+                break
+
+        #degroup
+        pattern = "([ΣΕΤσετSETset]{3}\s\d{1,4}\s\S+)\s"
+        grouping = re.findall(pattern, string)
+        if grouping:
+            grouping = grouping[0]
+            print(f"{grouping = }\n")
+            string = string.replace(grouping+" ", "").strip()
+        
+        first = 0
+
+    pattern = "(.*)\s(\S*\d.*)"
+    results = re.findall(pattern, string)
+    if results:
+        results = list(results[0])
+        tail = results.pop()
+        head = results[0]
+        print(" | ".join([head,tail]))
+    else:
+        print(string)
+    if results:
+        return find("".join(results), 0, brand, grouping)
+    # else:
+    #     return ("".join(results), 0, brand, grouping)
+
+
+    
 
 
 def main():
