@@ -312,17 +312,19 @@ def find(string: str = titles[1231], brand = "", grouping = "", code = "", first
 
         #debrand
         for brand_name in ProductTitle.topics['brand']:
-            if fuzz.partial_ratio(string, brand_name) == 100:
+            if fuzz.partial_ratio(string.upper(), brand_name.upper()) == 100:
                 brand = brand_name
-                string = string.replace(brand, "").strip()
+                string = string.upper().replace(brand.upper(), "").lower().strip()
                 break
 
         #degroup
-        pattern = "([ΣΕΤσετSETset]{3}\s\d{1,4}\s\S+)\s"
-        grouping = re.findall(pattern, string)
-        if grouping:
-            grouping = grouping[0]
-            string = string.replace(grouping+" ", "").strip()
+        patterns = ["([ΣΕΤσετSETset]{3}\s\d{1,4}\s\S+)\s", "(S/\d*)\s"]
+        for pattern in patterns:
+            grouping = re.findall(pattern, string)
+            if grouping:
+                grouping = grouping[0]
+                string = string.replace(grouping+" ", "").strip()
+                break
         
         first = 0
 
@@ -352,7 +354,12 @@ def find(string: str = titles[1231], brand = "", grouping = "", code = "", first
     return(string.title().strip().strip("|").strip(), brand.title(), grouping, code)
 
 
-    
+def test_find(debug = 0):
+    for title in titles:
+        a, b, c, d = find(title)
+        if debug:
+            a = a.replace(" |", "")
+        print(a, b, c, d, sep = " - ")
 
 
 def main():
