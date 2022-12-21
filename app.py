@@ -304,20 +304,16 @@ def get_new_dataset():
 
 
 
-def find(checkstring: str = titles[1231], first: int = 1, brand = "", grouping = ""):
+def find(string: str = titles[1231], brand = "", grouping = "", code = "", first: int = 1) -> tuple[str, str, str, int]:
 
-    string = checkstring.split(" | ")[0]
-
-    head = ""
-    tail = ""
 
     if first:
-        print()
+        string = string + " |"
 
         #debrand
-        for brand in ProductTitle.topics['brand']:
-            if fuzz.partial_ratio(string, brand) == 100:
-                print(f"{brand = }\n")
+        for brand_name in ProductTitle.topics['brand']:
+            if fuzz.partial_ratio(string, brand_name) == 100:
+                brand = brand_name
                 string = string.replace(brand, "").strip()
                 break
 
@@ -326,24 +322,34 @@ def find(checkstring: str = titles[1231], first: int = 1, brand = "", grouping =
         grouping = re.findall(pattern, string)
         if grouping:
             grouping = grouping[0]
-            print(f"{grouping = }\n")
             string = string.replace(grouping+" ", "").strip()
         
         first = 0
 
-    pattern = "(.*)\s(\S*\d.*)"
-    results = re.findall(pattern, string)
+    head, *tail = string.split("|")
+
+    # recursive call to split string into parts with alphanumerics
+    pattern = "(.*)\s(\w*\d.*)\s?"
+    results = re.findall(pattern, head)
     if results:
         results = list(results[0])
-        tail = results.pop()
-        head = results[0]
-        print(" | ".join([head,tail]))
-    else:
-        print(string)
-    if results:
-        return find("".join(results), 0, brand, grouping)
-    # else:
-    #     return ("".join(results), 0, brand, grouping)
+        head = " | ".join(results)
+        return find(head + "|" + "|".join(tail), brand, grouping, code, 0)
+    string = string.strip("|")
+
+    #de-SKU
+    check_string = string.split("|")[-1]
+    if len(check_string) > 3:
+        found = re.search("\d[XxΧχ]\d", check_string)
+        if not found:
+            found = re.search("\S+\d\S+", check_string)
+            if found:# and found.span()[1]-found.span()[0] > 2:
+                string = string.replace(check_string, "")
+                string = string.replace("κωδ.", "")
+                code = check_string.strip().strip("|").strip()
+
+
+    return(string.title().strip().strip("|").strip(), brand.title(), grouping, code)
 
 
     
