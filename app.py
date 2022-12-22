@@ -54,7 +54,7 @@ class ProductTitle:
 
     def __init__(self, title, debug = False):
         self.debug = debug
-        self.info = self.find(title)                                                #Calls find() function of this module
+        self.info = self.find(title)                                                            #Calls find() function of this module
                                                                                     #TODO: Make app.find() a method of ProductTitle class
 
     def find(self, title):
@@ -65,190 +65,45 @@ class ProductTitle:
         pprint(self.info)
 
 
-    def simplify_title(self):
-        title = self.normalize()
-        brand_ = ""
-        possible_SKU = ""
-        for brand in self.topics['brand']:
-            if fuzz.partial_ratio(title, brand) == 100:                             #Old function to be replaced by find()
-                brand_ = brand
-                title = title.replace(brand, "").strip()
-                break
-        possible_SKU = title.split(" ")[-1]
-        if re.search("\d", possible_SKU):
-            title = title.replace(possible_SKU, "")
-        else:
-            possible_SKU = ""
-        if self.debug:
-            print(possible_SKU)
-            print(brand_)
-            print(title)
-            print()
-        # self.brand = brand_
-        # self.code = possible_SKU
-        return title, brand_, possible_SKU.replace("ΚΩΔ:", "")
-
-
-    def normalize(self) -> str:
-        d = {ord('\N{COMBINING ACUTE ACCENT}'):None}                                            # unicodedata library
-        normalized_title = ud.normalize("NFD", self.original_title).upper().translate(d)        # code to remove diacritics
-        normalized_title = (
-            normalized_title
-            .replace(" ", " ")
-            .replace(" ", " ")
-            .replace("/", " ")
-            # .replace("-", " ")
-            .replace("\"", "")
-            .replace("\'", "")                                                      #Old function to be replaced in favor of different logic
-            .replace(", ", " ")                                                     
-            .replace("(", " ")
-            .replace(")", " ")
-            .replace(".", "")
-            .replace(",1", ".1")
-            .replace(",2", ".2")
-            .replace(",3", ".3")
-            .replace(",4", ".4")
-            .replace(",5", ".5")
-            .replace(",6", ".6")
-            .replace(",7", ".7")
-            .replace(",8", ".8")
-            .replace(",9", ".9")
-            .replace(",", " ")
-            .replace(".1", ",1")
-            .replace(".2", ",2")
-            .replace(".3", ",3")
-            .replace(".4", ",4")
-            .replace(".5", ",5")
-            .replace(".6", ",6")
-            .replace(".7", ",7")
-            .replace(".8", ",8")
-            .replace(".9", ",9")
-            # .replace(" ΤΕΜ", "ΤΕΜ")
-            # .replace("+ ", "+")
-            .replace("ΚΩΔ ", "ΚΩΔ:")
-            .replace("ΣΕΤ ΤΩΝ", "ΣΕΤ")
-            .replace("ΧΡΩΜΑΤΑ", "")
-            .replace("ΧΡΩΜΑ", "")
-            .replace(" ΣΕ ", " ")
-            # .replace("AI DECORATION", "AI_DECORATION")
-            # .replace("SB HOME", "SB_HOME")
-            # .replace("GUY LAROCHE", "GUY_LAROCHE")
-        )
-        normalized_title = re.sub("\s{2,}", " ", normalized_title)
-        normalized_title = re.sub("\d*%", "", normalized_title)
+    @staticmethod
+    def remove_diacritics(title) -> str:
+        d = {ord('\N{COMBINING ACUTE ACCENT}'):None}                                # unicodedata library
+        normalized_title = ud.normalize("NFD", title).upper().translate(d)          # code to remove diacritics
         return normalized_title
 
 
-    def get_info(self) -> list:
-        return [*map(lambda x: " ".join(x).title() if repr(type(x)) == "<class 'list'>" else str(x).title(), [self.original_title, self.normalized_title, self.product, self.brand, self.code, self.grouping, self.dimension, self.color, self.material])]+[self.entropy_product, self.entropy_title]
-
-    
-    def get_column_names(self) -> list[str]:
-        return ["og_title", "normalized_title", "product", "brand", "code", "grouping", "dimension", "color", "material", "entropy", "entropy_title"]
-
-
-    def to_excel(self, data, column_names, start = False):
-        df = pd.DataFrame(data, columns=column_names)
-        try:
-            df.to_excel("product_title_results.xlsx")
+    @staticmethod
+    def to_excel(data, column_names, start = False, filename="product_title_results.xlsx"):     
+        df = pd.DataFrame(data, columns=column_names)                                           
+        try:                                                                        #Creates an excel file with data
+            df.to_excel(filename)                                                   #start=True will launch excel
             if start:
                 print("Launching Excel File")
-                os.startfile("product_title_results.xlsx")
-        except Exception as e:
+                os.startfile(filename)                                      
+        except Exception as e:                                                                  
             print("An exception was raised:")
             print(e)
             print("Try closing excel and retry")
             inp = input("Retry? Y/n").lower()
             if inp != "n" or inp != "ν":
-                df.to_excel("product_title_results.xlsx")
+                df.to_excel(filename)
                 if start:
                     print("Launching Excel File")
-                    os.startfile("product_title_results.xlsx")
+                    os.startfile(filename)
+ 
 
 
 
-    def classifier_old(self) -> bool:
-        matched_words = {}
-        for word in self.normalized_words:
-            is_matched = False
-            matched_words.setdefault(word, "")
-            for topic, patterns in self.topics.items():
-                for pattern in patterns:
-                    if self.debug:
-                        check = re.search(pattern, word)
-                        # if check:
-                        #     print(check)
-                    if re.search(pattern, word):
-                        matched_words[word] = topic
-                        is_matched = True
-                        break
-                if is_matched: break    
-        return matched_words
-
-
-    def classifier(self, topic) -> bool:
-        matched = {}
-        patterns = self.topics[topic]
-        for pattern in patterns:
-            search = re.findall(pattern, self.normalized_title)
-            if search:
-                for item in search:
-                    item = item.strip()
-                    matched[item] = topic
-        if self.debug:
-            print(self.original_title)
-            print(matched)
-        return list(set(list(matched.keys())))
-
-
-    def add_descriptors(self):
-        title = self.normalized_title
-        for word, topic in self.matched_words.items():
-            title = title.replace(word, f"${topic[0]}{word}")
-        return title
-
-
-    def extract_product(self) -> str:
-        product = self.normalized_title+" "
-        items = [self.dimension, self.grouping, self.material, self.color]
-        string = ""
-        for item in items:
-            word = " ".join(item)
-            string += f" {word}"
-        string = re.sub("\s{1,}", " ", string)
-        words = string.split(" ")
-        if self.debug:
-            print(words)
-        for word in words:
-            if word:
-                # word = word.replace("&&&", " ")
-                product = product.replace(f" {word} ", "  ")
-        return re.sub("\s{1,}", " ", product).strip()
-
-
-    def extract(self, kw) -> list[str]:
-        return re.findall(f"\$\$\$(\S+)\({kw}\)", self.verbose_title)
-
-
-    def calculate_entropy(self, text: str) -> float:
-        words = re.findall("\S+", text)
-        score = 0
-        for word in words:
-            score += 0.01
-            if len(word) <= 3:
-                score += 1.01
-        return score
-        
 
 
 if "dumped_product_titles.txt" in os.listdir():
-    print("Loading Cache - To load from scratch, delete 'dumped_product_titles.txt'")
+    print("Loading Cache - To load from scratch, delete 'dumped_product_titles.txt'")               #loads cached data 
     with open("dumped_product_titles.txt", 'r', encoding='utf-8') as f:
         titles = f.readlines()
 else:
-    filename = "products_20221215-044713.xlsx"
-    print("Loading Workbook")
-    wb = opxl.load_workbook(filename)
+    filename = "products_20221215-044713.xlsx"                                                      #loads original data
+    print("Loading Workbook")                                                                       #for testing purposes, just use the cache
+    wb = opxl.load_workbook(filename)                                                               #should change for final version
     sheet = wb["Products"]
 
     titles = [x[0].value for x in sheet["f2:f100000"] if x[0].value]
@@ -447,25 +302,17 @@ def test_find(likely = 0, modulus = 1, show_only = ""):
 
 
 
-def go(app, test=1, likely=0, modulus=1000, show_only=""):                          #Helper function for interactive shell            
+def go(app, test=0, likely=0, modulus=1000, show_only=""):                          #Helper function for interactive shell            
     from importlib import reload                                                    #Reloads the module and runs a test function
     reload(app)                                                                     #Simple usage: app.go(app, test=0)
     if test:
         test_find(likely=likely, modulus=modulus, show_only=show_only)
 
-
+pt = ProductTitle
 
 def main():
-
-
-    data = []
-    for i, title in enumerate(titles):
-        title = ProductTitle(title.strip())
-        data.append(title.get_info())
-        print(f"[{i+1}/{len(titles)}]                ", end="\r")
-
-    print("Preparing Excel File")
-    title.to_excel(data, title.get_column_names(), start=True)
+    print("Test Case")
+    pt(titles[12345]).show_info()
 
 
 
