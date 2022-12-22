@@ -43,7 +43,7 @@ class ProductTitle:
               "[^Μ][^Ε]\s?-?(ΚΡΕΜ)\W", 
               "[^Μ][^Ε]\s?-?(Τ\wΡΚΟΥΑΖ)-?", 
               "[^Μ][^Ε]\s?-?(ΜΠΡΟΝΖΕ)-?"],
-    "brand": ["INART", "ESPIEL", "KENTIA", "ZAROS", "AI DECORATION", "CLICK", "GUY LAROCHE", "SAINT CLAIR", "SAINTCLAIR", "SB HOME", "SBABY", "BLE", "Versace 19•69"],
+    "brand": ["INART", "ESPIEL", "KENTIA", "ESTIA", "ΕΣΤΙΑ", "ZAROS", "AI DECORATION", "CLICK", "GUY LAROCHE", "SAINT CLAIR", "SAINTCLAIR", "SB HOME", "SBABY", "BLE", "Versace 19•69"],
     "grouping": ["ΣΕΤ \d\d?\s?\S*", "ΣΕΤ \d\d?\s?\S*",  "ΣΕΤ ΤΩΝ \d\d?", "ΣΕΤ\d\d?", "SET", "^ΣΕΤ\s", "ΣΕΤ\s", "\d\d?\sΤΕΜ\S*", '\s(TEM)\s', "\s(ΤΕΜ)\s", "\sS\s\d\d?", "^S\s\d\d?"],
     "dimension": ["[ΦΔDF]\d\S+\s?\d?\d?\d?\s?[CM,ML,L,ΕΚ]*", "\S*\d[XΧ]\d\S*\s?\d?\d?\d?\s?[CM,ML,L,ΕΚ]*", "\S*\d\s?\d?\d?\d?\s?[CMLΕΚΧΙΛ]+\s"],
     # "unit": ["CM\w*\W?", "ΕΚ\w*\W?", "ΜΕΤΡ\w?\W?", "ML"],
@@ -63,22 +63,6 @@ class ProductTitle:
         self.product = self.extract_product().title()
         self.entropy_title = self.calculate_entropy(self.normalized_title)
         self.entropy_product = self.calculate_entropy(self.product)
-
-
-
-
-
-        # self.normalized_words = self.normalized_title.split(" ")
-        # self.matched_words = self.classifier()
-        # self.verbose_title = self.add_descriptors()
-        # self.product = self.extract_product()
-        # # self.brand = self.extract("brand")
-        # # self.code = self.extract("code")
-        # self.unit = self.extract("unit")
-        # self.grouping = self.extract("grouping")
-        # self.dimension = self.extract("dimension")
-        # self.color = self.extract("color")
-        # self.material = self.extract("material")
 
 
     def simplify_title(self):
@@ -303,28 +287,41 @@ def get_new_dataset():
     return dfnew
 
 
+#______________________________
 
-def find(string: str = titles[1231], brand = "", grouping = "", code = "", first: int = 1) -> tuple[str, str, str, int]:
-
+def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", code = "", series = "", first: int = 1) -> tuple[str, str, str, int]:
 
     if first:
+        og_title = string
+        # print('\n'+string.strip())
         string = string + " |"
+        string = string.upper()
 
         #debrand
         for brand_name in ProductTitle.topics['brand']:
             if fuzz.partial_ratio(string.upper(), brand_name.upper()) == 100:
                 brand = brand_name
-                string = string.upper().replace(brand.upper(), "").lower().strip()
+                string = string.upper().replace(brand.upper(), "").strip()
                 break
 
         #degroup
-        patterns = ["([ΣΕΤσετSETset]{3}\s\d{1,4}\s\S+)\s", "(S/\d*)\s"]
+        patterns = ["([Ss]/\d*)\s", "([ΣΕΤσετSETset]{3}\s\d{1,4}\s\S+)\s"]
         for pattern in patterns:
             grouping = re.findall(pattern, string)
             if grouping:
                 grouping = grouping[0]
                 string = string.replace(grouping+" ", "").strip()
                 break
+            grouping = ""
+
+
+        #deseries
+        series = ""
+        words = string.split()[0:2]
+        if re.search("\d+", words[1]) and re.search("[a-zA-Z]+", words[0]):
+            series = " ".join(words)
+            string = string.replace(series + " ", "") 
+
         
         first = 0
 
@@ -336,8 +333,9 @@ def find(string: str = titles[1231], brand = "", grouping = "", code = "", first
     if results:
         results = list(results[0])
         head = " | ".join(results)
-        return find(head + "|" + "|".join(tail), brand, grouping, code, 0)
+        return find(head + "|" + "|".join(tail), og_title, brand, grouping, code, series, 0)
     string = string.strip("|")
+    
 
     #de-SKU
     check_string = string.split("|")[-1]
@@ -345,21 +343,87 @@ def find(string: str = titles[1231], brand = "", grouping = "", code = "", first
         found = re.search("\d[XxΧχ]\d", check_string)
         if not found:
             found = re.search("\S+\d\S+", check_string)
+            if found:
+                if re.search("[a-zA-Z]", check_string):
+                    if not re.search("(\s[a-zA-Z])", check_string):
+                        found = ""
             if found:# and found.span()[1]-found.span()[0] > 2:
                 string = string.replace(check_string, "")
-                string = string.replace("κωδ.", "")
+                string = string.replace("κωδ.", "").replace("ΚΩΔ.", "")
                 code = check_string.strip().strip("|").strip()
 
 
-    return(string.title().strip().strip("|").strip(), brand.title(), grouping, code)
+    #find volumes
+    volumes = ""
+    for substring in string.split("|"):
+        result = re.findall("\s(\d+\s?[MLmlΜΛμλTtΤτ]{2})\s", substring)
+        if type(result) == type('a'):
+            result = [result]
+        volumes += " ".join(result)
+    if volumes:
+        for volume in volumes.split():
+            string = string.replace(f"{volume} ", "")
+        volumes = re.sub("(\d+)(\[a-zA-Z]+)", r"\1 \2", volumes)
+ 
+    
+
+    #remove info in parenthesis
+    parenth = re.findall("\((.+?)\)", string)
+    if parenth:
+        for item in parenth:
+            string = string.replace(f" ({item})", "")
+        parenth = " ".join(parenth)
+    else:
+        parenth = ""
+
+    #split title
+    breakpoints = re.findall("(.+?)\|", string + "|")
+    for i, y in enumerate(breakpoints):
+        breakpoints[i] = y.strip()
+    main_title = string
+    rest = ""
+    if breakpoints:
+        if breakpoints[0]:
+            main_title = breakpoints.pop(0)
+            rest = "".join(breakpoints)
+
+    
+    #possible dimensions
+    dimensions = ""
+    search = re.findall("\S+\s?\w?\w?\.?", rest)
+    if len(search) == 1:
+        dimensions = rest.lower().replace("χ", "x")
+
+        rest = ""
+
+    # head = head.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ")
+    # rest = rest.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ")
+
+    main_title = main_title.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ")
+    rest = rest.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ")
+
+    return {'og_title': og_title, 
+            'Title':main_title.title().strip(),
+            'Rest':rest.title().strip(),
+            'Brand':brand.title().strip(), 
+            'Grouping':grouping.title().strip(), 
+            'SKU':code.upper().strip(),
+            'Dimensions':dimensions.lower().strip(),
+            'Series':series.title().strip(), 
+            'Misc':parenth.title().strip(), 
+            'Volume':volumes.title().strip(),
+    }
 
 
-def test_find(debug = 0):
-    for title in titles:
-        a, b, c, d = find(title)
-        if debug:
-            a = a.replace(" |", "")
-        print(a, b, c, d, sep = " - ")
+
+def test_find(debug = 0, modulus = 1):
+    for i, title in enumerate(titles):
+        if i%modulus == 0:
+            print("\n---\n")
+            product = find(title)        
+            for k, v in product.items():
+                if v:
+                    print(f"{k}: {v}")
 
 
 def main():
