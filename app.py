@@ -12,7 +12,8 @@ from pprint import pprint
 
 class ProductTitle:
 
-    cols = ['og_title',
+    cols = [
+        'og_title',
         'Title',
         'Rest',
         'Brand',
@@ -21,7 +22,8 @@ class ProductTitle:
         'Dimensions',
         'Series',
         'Misc',
-        'Volume',]
+        'Volume',
+    ]
 
     topics: dict[str: re.Pattern] = {
     "color": ['[^Μ][^Ε]\s?-?(ΛΕΥΚ\w[Σ]?)-?',                                        #TODO: Move the patterns to external files
@@ -80,18 +82,8 @@ class ProductTitle:
         
     @staticmethod
     def get_columns():
-        cols = [
-        'og_title',
-        'Title',
-        'Rest',
-        'Brand',
-        'Grouping',
-        'SKU',
-        'Dimensions',
-        'Series',
-        'Misc',
-        'Volume',]
-        return cols
+        return ProductTitle.cols
+
 
     @staticmethod
     def remove_diacritics(title) -> str:
