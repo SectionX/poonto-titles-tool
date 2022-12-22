@@ -68,6 +68,7 @@ and ends.
 
 Going forward:
 
+1)
 Deal with titles that don't contain the words "ΣΕ", "ΜΕ" and "+".
 Extracting colors and materials from these titles are the most likely to
 be correct.
@@ -79,6 +80,14 @@ For Example:
 
 The title contains 2 words but only yellow is relevant.
 
+2)
+Compile patterns in seperate files to reduce the size of the app.py file
+Simplify the find() function for readability and easier bug fixing and 
+connect it to the ProductTitle class.
+
+3)
+Compile all titles that have high chance to be correctly dismantled and then
+start dealing with ΣΕ/ΜΕ/+
 
 
 

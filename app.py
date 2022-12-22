@@ -376,6 +376,7 @@ def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", c
     else:
         parenth = ""
 
+
     #split title
     breakpoints = re.findall("(.+?)\|", string + "|")
     for i, y in enumerate(breakpoints):
@@ -385,22 +386,24 @@ def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", c
     if breakpoints:
         if breakpoints[0]:
             main_title = breakpoints.pop(0)
-            rest = "".join(breakpoints)
+            rest = " | ".join(breakpoints)
 
     
     #possible dimensions
     dimensions = ""
-    search = re.findall("\S+\s?\w?\w?\.?", rest)
-    if len(search) == 1:
-        dimensions = rest.lower().replace("χ", "x")
-
-        rest = ""
+    search_string = re.findall("[ΦΔΥ]?\d\S*[ΧχXx]?\S*\s?[ΕΚεκCMcm]{0,2}\.?", rest)
+    search = re.findall("\d\S*[ΧχXx]?\S*\s?[ΕΚεκCMcm]{0,2}\.?", rest.split("|")[-1])
+    # print(search, search_string)
+    if len(search) == 1 and len(search_string) == 1:
+        dimensions = search[0]
+        rest = rest.replace(dimensions, "")
+        dimensions = dimensions.lower().replace("χ", "x")
 
     # head = head.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ")
     # rest = rest.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ")
 
-    main_title = main_title.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ")
-    rest = rest.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ")
+    main_title = main_title.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ").replace("+ ", "| + ")
+    rest = rest.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ").replace("+ ", "| + ")
 
     return {'og_title': og_title, 
             'Title':main_title.title().strip(),
@@ -416,14 +419,36 @@ def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", c
 
 
 
-def test_find(debug = 0, modulus = 1):
+def test_find(likely = 0, modulus = 1, show_only = ""):
+    alltitles = 0
+    count = 0
     for i, title in enumerate(titles):
         if i%modulus == 0:
-            print("\n---\n")
+            alltitles += 1
             product = find(title)        
+            if likely:
+                if re.search("\|", product['Title']) or re.search("\|", product["Rest"]): continue
+            print("\n---\n")
+            count += 1
             for k, v in product.items():
                 if v:
-                    print(f"{k}: {v}")
+                    if not show_only:
+                        print(f"{k}: {v}")
+                    else:
+                        if product[show_only]:
+                            print(f"{k}: {v}") 
+    if alltitles:
+        print(f"\n{alltitles = } / {count = } / {count/alltitles}")
+
+
+
+
+def go(app, test=1, likely=0, modulus=1, show_only=""):
+    from importlib import reload
+    reload(app)
+    if test:
+        test_find(likely=likely, modulus=modulus, show_only=show_only)
+
 
 
 def main():
