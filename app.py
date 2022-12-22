@@ -8,12 +8,13 @@ from pprint import pprint as pp
 from fuzzywuzzy import fuzz
 from collections import Counter
 import win32ui
+from pprint import pprint
 
 class ProductTitle:
 
     topics: dict[str: re.Pattern] = {
-    "color": ['[^Μ][^Ε]\s?-?(ΛΕΥΚ\w[Σ]?)-?', 
-              '[^Μ][^Ε]\s?-?(ΑΣΠΡ\w[Σ]?)-?', 
+    "color": ['[^Μ][^Ε]\s?-?(ΛΕΥΚ\w[Σ]?)-?',                                        #TODO: Move the patterns to external files
+              '[^Μ][^Ε]\s?-?(ΑΣΠΡ\w[Σ]?)-?',                                        #Lexicon of Brands, Colors and Materials
               '[^Μ][^Ε]\s?-?(ΓΚΡΙ)-?', 
               '[^Μ][^Ε]\s?-?(ΕΚΡΟΥ)-?', 
               '[^Μ][^Ε]\s?-?(ΜΠΕΖ)-?', 
@@ -53,16 +54,15 @@ class ProductTitle:
 
     def __init__(self, title, debug = False):
         self.debug = debug
-        self.original_title: str = title.strip()
-        self.title = self.original_title
-        self.normalized_title, self.brand, self.code = self.simplify_title()
-        self.grouping = self.classifier("grouping")
-        self.color = self.classifier("color")
-        self.material = self.classifier("material")
-        self.dimension = self.classifier("dimension")
-        self.product = self.extract_product().title()
-        self.entropy_title = self.calculate_entropy(self.normalized_title)
-        self.entropy_product = self.calculate_entropy(self.product)
+        self.info = self.find(title)                                                #Calls find() function of this module
+                                                                                    #TODO: Make app.find() a method of ProductTitle class
+
+    def find(self, title):
+        return find(title)                                                          #A bit of duct tape fixes everything!
+
+
+    def show_info(self):
+        pprint(self.info)
 
 
     def simplify_title(self):
@@ -70,7 +70,7 @@ class ProductTitle:
         brand_ = ""
         possible_SKU = ""
         for brand in self.topics['brand']:
-            if fuzz.partial_ratio(title, brand) == 100:
+            if fuzz.partial_ratio(title, brand) == 100:                             #Old function to be replaced by find()
                 brand_ = brand
                 title = title.replace(brand, "").strip()
                 break
@@ -99,8 +99,8 @@ class ProductTitle:
             .replace("/", " ")
             # .replace("-", " ")
             .replace("\"", "")
-            .replace("\'", "")
-            .replace(", ", " ")
+            .replace("\'", "")                                                      #Old function to be replaced in favor of different logic
+            .replace(", ", " ")                                                     
             .replace("(", " ")
             .replace(")", " ")
             .replace(".", "")
@@ -287,26 +287,29 @@ def get_new_dataset():
     return dfnew
 
 
-#______________________________
+#find() function is huge and needs to be simplified with more descriptive names and standarized output. For now I added comments to navigate it
+#but it does way too many string manipulations without any standard, which leads to bugs that take time to resolve.
+#Thankfully the recursion doesn't really need to return any information. It just passes the modified input around. Perhaps I should
+#get rid of it but it gets points for style. Sorry.
 
-def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", code = "", series = "", first: int = 1) -> tuple[str, str, str, int]:
+def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", code = "", series = "", first: int = 1) -> dict[str:str]:
 
-    if first:
-        og_title = string
+    if first:                                                                       #Necessary flag due to recursion.
+        og_title = string                                                           #Every bit of code here only needs to run once.
         # print('\n'+string.strip())
         string = string + " |"
         string = string.upper()
 
         #debrand
         for brand_name in ProductTitle.topics['brand']:
-            if fuzz.partial_ratio(string.upper(), brand_name.upper()) == 100:
-                brand = brand_name
-                string = string.upper().replace(brand.upper(), "").strip()
+            if fuzz.partial_ratio(string.upper(), brand_name.upper()) == 100:       #Brand names generally are very easy to isolate and could
+                brand = brand_name                                                  #be handled with a simple search, but to avoid possible
+                string = string.upper().replace(brand.upper(), "").strip()          #typos, I did a fuzz search instead
                 break
 
         #degroup
-        patterns = ["([Ss]/\d*)\s", "([ΣΕΤσετSETset]{3}\s\d{1,4}\s\S+)\s"]
-        for pattern in patterns:
+        patterns = ["([Ss]/\d*)\s", "([ΣΕΤσετSETset]{3}\s\d{1,4}\s\S+)\s"]          #Poonto adds the tag 'ΣΕΤ # τεμ.' to certain products
+        for pattern in patterns:                                                    #and unless there is a typo, this should always work fine.
             grouping = re.findall(pattern, string)
             if grouping:
                 grouping = grouping[0]
@@ -316,10 +319,10 @@ def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", c
 
 
         #deseries
-        series = ""
-        words = string.split()[0:2]
-        if re.search("\d+", words[1]) and re.search("[a-zA-Z]+", words[0]):
-            series = " ".join(words)
+        series = ""                                                                 #Some products are part of named series that usually
+        words = string.split()[0:2]                                                 #come before the product. While it's not easy to isolate
+        if re.search("\d+", words[1]) and re.search("[a-zA-Z]+", words[0]):         #them, if they follow a "Name ##" pattern, then they are 
+            series = " ".join(words)                                                #almost certainly a match.
             string = string.replace(series + " ", "") 
 
         
@@ -328,8 +331,8 @@ def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", c
     head, *tail = string.split("|")
 
     # recursive call to split string into parts with alphanumerics
-    pattern = "(.*)\s(\w*\d.*)\s?"
-    results = re.findall(pattern, head)
+    pattern = "(.*)\s(\w*\d.*)\s?"                                                  #recursively marks alphanumeric words and numbers
+    results = re.findall(pattern, head)                                             #from right to left.
     if results:
         results = list(results[0])
         head = " | ".join(results)
@@ -338,15 +341,15 @@ def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", c
     
 
     #de-SKU
-    check_string = string.split("|")[-1]
-    if len(check_string) > 3:
-        found = re.search("\d[XxΧχ]\d", check_string)
-        if not found:
+    check_string = string.split("|")[-1]                                            
+    if len(check_string) > 3:                                                       #SKUs have more than 3 characters
+        found = re.search("\d[XxΧχ]\d", check_string)                               #if they match too closely to a dimension pattern
+        if not found:                                                               #then the program should ignore them
             found = re.search("\S+\d\S+", check_string)
             if found:
-                if re.search("[a-zA-Z]", check_string):
-                    if not re.search("(\s[a-zA-Z])", check_string):
-                        found = ""
+                if re.search("[a-zA-Z]", check_string):                             #if the SKU contains letters, it should never begin
+                    if not re.search("(\s[a-zA-Z])", check_string):                 #with a numeric character.
+                        found = ""                                                  
             if found:# and found.span()[1]-found.span()[0] > 2:
                 string = string.replace(check_string, "")
                 string = string.replace("κωδ.", "").replace("ΚΩΔ.", "")
@@ -354,10 +357,10 @@ def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", c
 
 
     #find volumes
-    volumes = ""
-    for substring in string.split("|"):
-        result = re.findall("\s(\d+\s?[MLmlΜΛμλTtΤτ]{2})\s", substring)
-        if type(result) == type('a'):
+    volumes = ""                                                                    #while dimensions don't necessarily show the unit
+    for substring in string.split("|"):                                             #volume always does, otherwise it's impossible to 
+        result = re.findall("\s(\d+\s?[MLmlΜΛμλTtΤτ]{2})\s", substring)             #communicate the intent to a buyer, unless there is
+        if type(result) == type('a'):                                               #a typo, which is beyond the scope of this program
             result = [result]
         volumes += " ".join(result)
     if volumes:
@@ -368,9 +371,9 @@ def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", c
     
 
     #remove info in parenthesis
-    parenth = re.findall("\((.+?)\)", string)
-    if parenth:
-        for item in parenth:
+    parenth = re.findall("\((.+?)\)", string)                                       #the idea is that info in parenthesis
+    if parenth:                                                                     #is just miscellaneous info
+        for item in parenth:                                                        #and doesn't need to be looked upon too analytically
             string = string.replace(f" ({item})", "")
         parenth = " ".join(parenth)
     else:
@@ -391,19 +394,20 @@ def find(string: str = titles[1231], og_title = "", brand = "", grouping = "", c
     
     #possible dimensions
     dimensions = ""
-    search_string = re.findall("[ΦΔΥ]?\d\S*[ΧχXx]?\S*\s?[ΕΚεκCMcm]{0,2}\.?", rest)
-    search = re.findall("\d\S*[ΧχXx]?\S*\s?[ΕΚεκCMcm]{0,2}\.?", rest.split("|")[-1])
-    # print(search, search_string)
-    if len(search) == 1 and len(search_string) == 1:
+    pattern = "[ΦΔΥ]?\d\S*[ΧχXx]?\S*\s?[ΕΚεκCMcm]{0,2}\.?"
+    search_whole_string = re.findall(pattern, rest)                                 #if the pattern repeats, then we can't know 
+    search = re.findall(pattern, rest.split("|")[-1])                               #what product the dimension references
+    if len(search) == 1 and len(search_whole_string) == 1:                          #It's safe only if there is only a single match.
         dimensions = search[0]
         rest = rest.replace(dimensions, "")
         dimensions = dimensions.lower().replace("χ", "x")
 
-    # head = head.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ")
+    # head = head.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ")                   
     # rest = rest.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ")
 
-    main_title = main_title.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ").replace("+ ", "| + ")
-    rest = rest.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ").replace("+ ", "| + ")
+    main_title = main_title.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ").replace("+ ", "| + ")   #primes the remaining title for
+    rest = rest.replace("ΜΕ ", "| ΜΕ ").replace("ΣΕ ", "| ΣΕ ").replace("+ ", "| + ")               #the next extraction function
+                                                                                                    
 
     return {'og_title': og_title, 
             'Title':main_title.title().strip(),
@@ -443,9 +447,9 @@ def test_find(likely = 0, modulus = 1, show_only = ""):
 
 
 
-def go(app, test=1, likely=0, modulus=1, show_only=""):
-    from importlib import reload
-    reload(app)
+def go(app, test=1, likely=0, modulus=1000, show_only=""):                          #Helper function for interactive shell            
+    from importlib import reload                                                    #Reloads the module and runs a test function
+    reload(app)                                                                     #Simple usage: app.go(app, test=0)
     if test:
         test_find(likely=likely, modulus=modulus, show_only=show_only)
 
