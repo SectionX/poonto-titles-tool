@@ -1,0 +1,95 @@
+Function find()
+
+Logic -> 
+Since titles loosely follow a pattern, with the name of the product being first, and technical information
+being last, the function attempts to strip away layers of information one at a time.
+
+Subfunctions:
+1)
+At first pass, it removes 
+brand name
+groupings
+product series names that follow a pattern ^\w+\s\d{2}\s 
+
+2)
+It then recursively splits the title on numeric characters, from right to left
+and marks the splits with a pipe "|". 
+Example:
+
+Product Dimension SKU -> Product | Dimension | SKU
+Κορνιζα 30x30 εκ. ΑΒ1234 -> Κορνιζα | 30x30 εκ. | ΑΒ1234
+
+3)
+Checks the rightmost split if it matches a pattern for SKU.
+SKU can be 
+Alphanumeric with letters first and numbers second
+Numbers only 
+Numbers with dashes or dots 
+Greater than 3 characters in length
+
+If positive, it removes SKU from title and stores it in a variable
+
+4)
+Attempts to find technical characteristics related to volume
+Unlike dimensions, volume is far more likely to be marked with a metric unit
+Possible words are liters and milliliters and their shorthands like ML L and greek counterparts
+
+If positive, it removes it from title and stores it in a variable
+
+5)
+Attempls to isolate information inside parenthesis.
+Almost all information enclosed in parenthesis is either dimensions or miscellaneous characteristics
+of the product.
+
+If positive, it removes them from title and store them in a variable
+
+6)
+Removes the "head" of the title, meaning the part up to the first pipe ("|").
+The head is considered the most likely text to directly reference the product type.
+
+7)
+Checks the tail to see if it contains ONLY the product dimensions.
+The pattern for dimensions is either "\d[X]\d ε?κ?" or "\d εκ"
+
+If positive, it removes the tail completely and stores it in a variable.
+If there are more than 2 words in the tail, it does nothing.
+
+----------------
+
+At this point, anything that can safely be isolated has already been done so.
+Unless there is a bug, the chance of categorizing the wrong information is minuscule
+and probably has to do with typos.
+
+Titles that contain the words ΣΕ and ΜΕ are very verbose and can describe anything
+imaginable, so the function splits both the head and tail at these points with a pipe "|" 
+and ends.
+
+----------------
+
+Going forward:
+
+1)
+Deal with titles that don't contain the words "ΣΕ", "ΜΕ" and "+".
+Extracting colors and materials from these titles are the most likely to
+be correct.
+
+The problem is that if the title contains these characters, it's hard to know
+if the characteristics reference the product or some detail about the product.
+For Example: 
+Βαζο Με Κοκκινο Καπακι Κεραμικο Κιτρινο
+
+The title contains 2 words but only yellow is relevant.
+
+2)
+Compile patterns in seperate files to reduce the size of the app.py file
+Simplify the find() function for readability and easier bug fixing and 
+connect it to the ProductTitle class.
+
+3)
+Compile all titles that have high chance to be correctly dismantled and then
+start dealing with ΣΕ/ΜΕ/+
+
+
+
+
+
