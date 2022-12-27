@@ -68,7 +68,7 @@ class ProductTitle(Product):
     #Thankfully the recursion doesn't really need to return any information. It just passes the modified input around. Perhaps I should
     #get rid of it but it gets points for style. Sorry.
 
-    def find(self, string: str, og_title = "", brand = "", grouping = "", code = "", series = "", first: int = 1) -> dict[str:str]:
+    def find(self, string: str, og_title = "", parenth = "", brand = "", grouping = "", code = "", series = "", first: int = 1) -> dict[str:str]:
 
         if first:                                                                       #Necessary flag due to recursion.
             og_title = string                                                           #Every bit of code here only needs to run once.
@@ -76,22 +76,23 @@ class ProductTitle(Product):
             string = string + " |"
             string = string.upper()
 
+
+            #remove info in parenthesis
+            parenth = re.findall("\((.+?)\)", string)                                   #the idea is that info in parenthesis
+            if parenth:                                                                 #is just miscellaneous info
+                for item in parenth:                                                    #and doesn't need to be looked upon too analytically
+                    string = string.replace(f" ({item})", "")
+                parenth = " ".join(parenth)
+            else:
+                parenth = ""
+
             #debrand
             for brand_name in ProductTitle.topics['brand']:
-                if fuzz.partial_ratio(string.upper(), brand_name.upper()) == 100:       #Brand names generally are very easy to isolate and could
+                if fuzz.partial_ratio(string, brand_name.upper()) == 100:       #Brand names generally are very easy to isolate and could
                     brand = brand_name                                                  #be handled with a simple search, but to avoid possible
-                    string = string.upper().replace(brand.upper(), "").strip()          #typos, I did a fuzz search instead
+                    string = string.replace(brand.upper(), "").strip()          #typos, I did a fuzz search instead
                     break
 
-            #degroup
-            patterns = ["([Ss]/\d*)\s", "([ΣΕΤσετSETset]{3}\s\d{1,4}\s\S+)\s"]          #Poonto adds the tag 'ΣΕΤ # τεμ.' to certain products
-            for pattern in patterns:                                                    #and unless there is a typo, this should always work fine.
-                grouping = re.findall(pattern, string)
-                if grouping:
-                    grouping = grouping[0]
-                    string = string.replace(grouping+" ", "").strip()
-                    break
-                grouping = ""
 
 
             #deseries
@@ -101,6 +102,15 @@ class ProductTitle(Product):
                 series = " ".join(words)                                                #almost certainly a match.
                 string = string.replace(series + " ", "") 
 
+            #degroup
+            patterns = ["()([Ss]/\d*)\s", "(\s\d\d?)?(\s[SΣsσ][ΕεEe][TtΤτ]\s\d{1,4}\s\S+)\s"]          #Poonto adds the tag 'ΣΕΤ # τεμ.' to certain products
+            for pattern in patterns:                                                    #and unless there is a typo, this should always work fine.
+                grouping = re.findall(pattern, string)
+                if grouping:
+                    grouping = " ".join(list(grouping[0])).strip()
+                    string = string.replace(grouping+" ", "").strip()
+                    break
+                grouping = ""
             
             first = 0
 
@@ -112,7 +122,7 @@ class ProductTitle(Product):
         if results:
             results = list(results[0])
             head = " | ".join(results)
-            return self.find(head + "|" + "|".join(tail), og_title, brand, grouping, code, series, 0)
+            return self.find(head + "|" + "|".join(tail), og_title, parenth, brand, grouping, code, series, 0)
         string = string.strip("|")
         
 
@@ -135,7 +145,7 @@ class ProductTitle(Product):
         #find volumes
         volumes = ""                                                                    #while dimensions don't necessarily show the unit
         for substring in string.split("|"):                                             #volume always does, otherwise it's impossible to 
-            result = re.findall("\s(\d+\s?[MLmlΜΛμλTtΤτ]{2})\s", substring)             #communicate the intent to a buyer, unless there is
+            result = re.findall("\s(\d+[,\.]?\d*\s?[MmLl]{1}[TtLl]?)\s", substring)             #communicate the intent to a buyer, unless there is
             if type(result) == type('a'):                                               #a typo, which is beyond the scope of this program
                 result = [result]
             volumes += " ".join(result)
@@ -146,14 +156,7 @@ class ProductTitle(Product):
     
         
 
-        #remove info in parenthesis
-        parenth = re.findall("\((.+?)\)", string)                                       #the idea is that info in parenthesis
-        if parenth:                                                                     #is just miscellaneous info
-            for item in parenth:                                                        #and doesn't need to be looked upon too analytically
-                string = string.replace(f" ({item})", "")
-            parenth = " ".join(parenth)
-        else:
-            parenth = ""
+        
 
 
         #split title
@@ -170,7 +173,7 @@ class ProductTitle(Product):
         
         #possible dimensions
         dimensions = ""
-        pattern = "[ΦΔΥ]?\d\S*[ΧχXx]?\S*\s?[ΕΚεκCMcm]{0,2}\.?"
+        pattern = "\S+\s[EeΕε][ΚκKk]\.?\s|[ΦΔΥ]?\d\S*[ΧχXx]?\S*\s?[ΕΚεκCMcm]{0,2}\.?"
         search_whole_string = re.findall(pattern, rest)                                 #if the pattern repeats, then we can't know 
         search = re.findall(pattern, rest.split("|")[-1])                               #what product the dimension references
         if len(search) == 1 and len(search_whole_string) == 1:                          #It's safe only if there is only a single match.
