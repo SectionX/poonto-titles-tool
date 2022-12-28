@@ -1,17 +1,20 @@
-from app import *
+#decorator test
+from time import perf_counter
+
+def dec(func):
+    print("created function: " + repr(func) )
+    def wrapper(*args):
+        print("Inside Wrapper")
+        return func(*args)
+    return wrapper
 
 
 
-class ProductTitle_2(ProductTitle):
-
-    def __init__(self, title, debug=False):
-        super().__init__(title, debug)
-        
-
-
+@dec
+def my_sum(n):
+    if n == 0:
+        return 0
+    return n + my_sum(n-1)
 
 
-
-
-title = ProductTitle_2('SEA SPONGE ΜΠΩΛ ΣΕΤ 4 τεμ. ΔΙΑΦΑΝΟ 32 εκ. AD4800CL ESPIEL')
-title.__
+print(my_sum(4))

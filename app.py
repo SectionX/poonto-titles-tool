@@ -22,7 +22,8 @@ class ProductTitle(Product):
         'grouping': [re.compile("([Ss])(/\d*)\s"), re.compile("(\s\d\d?)?(\s[SΣsσ][ΕεEe][TtΤτ]\s\d{1,4}\s\S+)\s")], #
         'SKU': '', #conditionals
         'volume': re.compile("\| \d+,?\d?\s?[MmLlCc][TtLlCc\s]"),
-        'dimension': re.compile("\| [ΦΔDF]?\s?\d[0-9X\-,\.]+\s?[EeΕεCc^M^m^Μ^μ^T^t^Τ^τ]?[ΚκKkMm^C^c]?\.?\s?"),
+        'dimension': re.compile("\| [ΦΔDFYΥ]?\s?\d[0-9X\-,\.]+\s?[EeΕεCc^M^m^Μ^μ^T^t^Τ^τ]?[ΚκKkMm^C^c]?\.?\s?"),
+        'alphanumeric': re.compile("(\S*\d\S*)\s?")
     }
 
 
@@ -87,7 +88,7 @@ class ProductTitle(Product):
 
 
         #remove info in parenthesis !!
-        parenth = re.findall(self.regex_patterns['parenth'], string)                                   #the idea is that info in parenthesis
+        parenth = self.regex_patterns['parenth'].findall(string)                                   #the idea is that info in parenthesis
         if parenth:                                                                 #is just miscellaneous info
             for item in parenth:                                                    #and doesn't need to be looked upon too analytically
                 string = string.replace(f" ({item})", "")
@@ -115,14 +116,16 @@ class ProductTitle(Product):
 
         #degroup !!
         #patterns = ["([Ss])(/\d*)\s", "(\s\d\d?)?(\s[SΣsσ][ΕεEe][TtΤτ]\s\d{1,4}\s\S+)\s"]#, "([SΣsσ][ΕεEe][TtΤτ]).*?(\d\d?\s[TtΤτ][ΕεEe][MmΜμ]\.?)"]          #Poonto adds the tag 'ΣΕΤ # τεμ.' to certain products
+        grlist = []
         for pattern in self.regex_patterns['grouping']:                                                    #and unless there is a typo, this should always work fine.
-            grouping = re.findall(pattern, string)
+            grouping = pattern.findall(string)
             if grouping:
                 grouping = grouping[0] if type(grouping) != type("string") else grouping 
                 for word in grouping:
                     if word and word != " ":
+                        grlist.append(word)
                         string = string.replace(word, "").strip()
-                grouping = " ".join(list(grouping[0])).strip()
+                grouping = " ".join(grlist)
                 break
             grouping = ""
         
@@ -131,7 +134,7 @@ class ProductTitle(Product):
         
         ####### Alphanumeric split with pipes
         pattern = "(\S*\d\S*)\s?"
-        string = re.sub(pattern, "| \\1 ", string).strip("|\n")
+        string = self.regex_patterns['alphanumeric'].sub("| \\1 ", string).strip("|\n")
 
 
         #de-SKU
@@ -153,8 +156,8 @@ class ProductTitle(Product):
 
         volumes = ""
         pattern = "\| \d+,?\d?\s?[MmLlCc][TtLlCc\s]"
-        results = re.findall(self.regex_patterns['volume'], string)
-        string = re.sub(self.regex_patterns['volume'], "", string)
+        results = self.regex_patterns['volume'].findall(string)
+        string = self.regex_patterns['volume'].sub("", string)
         for i, y in enumerate(results):
             results[i] = results[i].strip().strip("|").strip()
         volumes = " / ".join(results)
@@ -283,20 +286,36 @@ def go(app, test=0, likely=0, modulus=1000, show_only=""):                      
         test_find(likely=likely, modulus=modulus, show_only=show_only)
 
 pt = ProductTitle
+columns = {i:y for i, y in enumerate("ABCDEFGHIJKLMNOPQRSTUVWXYZ")}
 
 def main():
     titles_count = len(titles)
     data = []
     print("Analyzing titles:")
     count = -1
-    for i, title in enumerate(titles):
+    wb = opxl.Workbook()
+    for y, topic in enumerate(["index"]+ProductTitle.get_columns()):
+            wb['Sheet'][f"{columns[y]}1"].value = topic
+    for i, title in enumerate(titles): ############
         # if i % int(len(titles)/10) == 0:
         #     count += 1
         # print(f"[{'|'*count}{' '*(10-count)}]", end='\r')
-        data.append(ProductTitle(title).get_data())
+        topics = ProductTitle(title).get_data()
+        wb['Sheet'][f"{columns[0]}{i+2}"].value = i + 1
+        for y, topic in enumerate(topics):
+            wb['Sheet'][f"{columns[y+1]}{i+2}"].value = topic
+    wb.save("product_title_results.xlsx")
+    wb.close()
+    
     print(f"[{titles_count} / {titles_count}]")
     print("Analysis complete.")
-    ProductTitle.to_excel(data, ProductTitle.get_columns(), start=True)
+    # wb = opxl.Workbook()
+    # for i, title in enumerate(data):
+    #     for y, topic in enumerate(title):
+    #         wb['Sheet'][f"{columns[y]}{i+1}"].value = topic
+    # wb.save("product_title_results.xlsx")
+    # wb.close()
+    # ProductTitle.to_excel(data, ProductTitle.get_columns(), start=True)
 
 
 
